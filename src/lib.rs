@@ -8,7 +8,7 @@
 //! Usage looks like:
 //! ```
 //! # use axum::response::IntoResponse;
-//! # use axum::routing::get;
+//! # use axum::routing::post;
 //! # use axum::Router;
 //! # use serde::Deserialize;
 //! # use std::sync::Arc;
@@ -26,7 +26,7 @@
 //! fn app() -> Router {
 //!     let token = String::from("d4705034dd0777ee9e1e3078a12a06985151b76f");
 //!     Router::new()
-//!         .route("/", get(echo))
+//!         .route("/", post(echo))
 //!         .with_state(GithubToken(Arc::new(token)))
 //! }
 //! ```
@@ -106,7 +106,7 @@ mod tests {
     use axum::body::{Body, BoxBody};
     use axum::http::{Request, StatusCode};
     use axum::response::IntoResponse;
-    use axum::routing::get;
+    use axum::routing::post;
     use axum::Router;
     use serde::Deserialize;
     use std::sync::Arc;
@@ -125,7 +125,7 @@ mod tests {
 
     fn app() -> Router {
         Router::new()
-            .route("/", get(echo))
+            .route("/", post(echo))
             .with_state(GithubToken(Arc::new(String::from("42"))))
     }
 
@@ -136,6 +136,7 @@ mod tests {
 
     fn with_header(v: &'static str) -> Request<Body> {
         Request::builder()
+            .method("POST")
             .header("X-Hub-Signature-256", v)
             .body(Body::empty())
             .unwrap()
@@ -143,7 +144,10 @@ mod tests {
 
     #[tokio::test]
     async fn signature_missing() {
-        let req = Request::builder().body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .method("POST")
+            .body(Body::empty())
+            .unwrap();
         let res = app().oneshot(req).await.unwrap();
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         assert_eq!(body_string(res.into_body()).await, "signature missing");
@@ -176,6 +180,7 @@ mod tests {
     #[tokio::test]
     async fn signature_valid() {
         let req = Request::builder()
+            .method("POST")
             .header(
                 "X-Hub-Signature-256",
                 "sha256=8b99afd7996c3e3c291a0b54399bacb72016bdb088071de42d1d7156a6a4273d",
