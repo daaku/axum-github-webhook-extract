@@ -1,3 +1,41 @@
+//! A library to secure [GitHub Webhooks][github-webhooks] and extract JSON
+//! event payloads in [Axum][axum].
+//!
+//! The library is an [Extractor][axum-extractor] paired with
+//! [State][axum-state] to provide the required [Secret
+//! Token][github-secret-token].
+//!
+//! Usage looks like:
+//! ```
+//! # use axum::response::IntoResponse;
+//! # use axum::routing::get;
+//! # use axum::Router;
+//! # use serde::Deserialize;
+//! # use std::sync::Arc;
+//! use axum_github_webhook_extract::{GithubToken, GithubEvent};
+//!
+//! #[derive(Debug, Deserialize)]
+//! struct Event {
+//!     action: String,
+//! }
+//!
+//! async fn echo(GithubEvent(e): GithubEvent<Event>) -> impl IntoResponse {
+//!     e.action
+//! }
+//!
+//! fn app() -> Router {
+//!     Router::new()
+//!         .route("/", get(echo))
+//!         .with_state(GithubToken(Arc::new(String::from("d4705034dd0777ee9e1e3078a12a06985151b76f"))))
+//! }
+//! ```
+//!
+//! [github-webhooks]: https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks
+//! [axum]: https://docs.rs/axum/latest/axum/
+//! [axum-extractor]: https://docs.rs/axum/latest/axum/#extractors
+//! [axum-state]: https://docs.rs/axum/latest/axum/#sharing-state-with-handlers
+//! [github-secret-token]: https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks#setting-your-secret-token
+
 use axum::body::{Bytes, HttpBody};
 use axum::extract::{FromRef, FromRequest};
 use axum::http::{Request, StatusCode};
@@ -8,7 +46,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 
-// State to provide the Github Token to verify Event signature.
+/// State to provide the Github Token to verify Event signature.
 #[derive(Debug, Clone)]
 pub struct GithubToken(pub Arc<String>);
 
@@ -72,11 +110,11 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     struct Event {
-        full_name: String,
+        action: String,
     }
 
     async fn echo(GithubEvent(e): GithubEvent<Event>) -> impl IntoResponse {
-        e.full_name
+        e.action
     }
 
     fn app() -> Router {
@@ -134,9 +172,9 @@ mod tests {
         let req = Request::builder()
             .header(
                 "X-Hub-Signature-256",
-                "sha256=144b2d11fb144d895276a685a92523c4542265676fdccc17ac7649695da2e7f2",
+                "sha256=8b99afd7996c3e3c291a0b54399bacb72016bdb088071de42d1d7156a6a4273d",
             )
-            .body(r#"{"full_name":"hello world"}"#.into())
+            .body(r#"{"action":"hello world"}"#.into())
             .unwrap();
         let res = app().oneshot(req).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
