@@ -24,17 +24,23 @@
 //! }
 //!
 //! fn app() -> Router {
+//!     let token = String::from("d4705034dd0777ee9e1e3078a12a06985151b76f");
 //!     Router::new()
 //!         .route("/", get(echo))
-//!         .with_state(GithubToken(Arc::new(String::from("d4705034dd0777ee9e1e3078a12a06985151b76f"))))
+//!         .with_state(GithubToken(Arc::new(token)))
 //! }
 //! ```
+//!
+//! You will usually get the token from your environment or configuration.
+//! The event payload is under your control, just make sure to configure it to
+//! use [JSON][github-json].
 //!
 //! [github-webhooks]: https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks
 //! [axum]: https://docs.rs/axum/latest/axum/
 //! [axum-extractor]: https://docs.rs/axum/latest/axum/#extractors
 //! [axum-state]: https://docs.rs/axum/latest/axum/#sharing-state-with-handlers
 //! [github-secret-token]: https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks#setting-your-secret-token
+//! [github-json]: https://docs.github.com/en/webhooks-and-events/webhooks/creating-webhooks#content-type
 
 use axum::body::{Bytes, HttpBody};
 use axum::extract::{FromRef, FromRequest};
