@@ -2,6 +2,13 @@
 name = "axum-github-webhook-extract"
 version = "0.1.0"
 edition = "2021"
+authors = ["Naitik Shah <n@daaku.org>"]
+description = "A library to secure GitHub Webhooks and extract JSON event payloads in Axum."
+readme = "readme.md"
+repository = "https://github.com/daaku/axum-github-webhook-extract"
+keywords = ["axum", "github"]
+categories = []
+license = "MIT"
 
 [dependencies]
 axum = "0.6"
