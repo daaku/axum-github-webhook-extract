@@ -1,6 +1,6 @@
 # axum-github-webhook-extract
 
-[![Build](https://github.com/daaku/axum-github-webhook-extract/workflows/build/badge.svg)](https://github.com/daaku/axum-github-webhook-extract/actions?query=workflow%3Abuild)
+[![Build](https://github.com/daaku/axum-github-webhook-extract/workflows/Build/badge.svg)](https://github.com/daaku/axum-github-webhook-extract/actions/workflows/build.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum-github-webhook-extract)](https://crates.io/crates/axum-github-webhook-extract)
 [![Documentation](https://docs.rs/axum-github-webhook-extract/badge.svg)](https://docs.rs/axum-github-webhook-extract)
 
