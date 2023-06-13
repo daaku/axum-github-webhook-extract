@@ -5,8 +5,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: hecrj/setup-rust-action@v1
       - uses: actions/checkout@v3
+      - run: rustup toolchain install stable
       - run: cargo build
       - run: cargo clippy
       - run: cargo test
