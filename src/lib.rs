@@ -42,10 +42,10 @@
 //! [github-secret-token]: https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks#setting-your-secret-token
 //! [github-json]: https://docs.github.com/en/webhooks-and-events/webhooks/creating-webhooks#content-type
 
-use axum::body::{Bytes, HttpBody};
-use axum::extract::{FromRef, FromRequest};
-use axum::http::{Request, StatusCode};
-use axum::{async_trait, BoxError};
+use axum::async_trait;
+use axum::body::Bytes;
+use axum::extract::{FromRef, FromRequest, Request};
+use axum::http::StatusCode;
 use hmac_sha256::HMAC;
 use serde::de::DeserializeOwned;
 use std::fmt::Display;
@@ -66,18 +66,15 @@ fn err(m: impl Display) -> (StatusCode, String) {
 }
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for GithubEvent<T>
+impl<T, S> FromRequest<S> for GithubEvent<T>
 where
     GithubToken: FromRef<S>,
     T: DeserializeOwned,
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let token = GithubToken::from_ref(state);
         let signature_sha256 = req
             .headers()
@@ -103,11 +100,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use axum::body::{Body, BoxBody};
-    use axum::http::{Request, StatusCode};
+    use axum::body::Body;
+    use axum::extract::Request;
+    use axum::http::StatusCode;
     use axum::response::IntoResponse;
     use axum::routing::post;
     use axum::Router;
+    use http_body_util::BodyExt;
     use serde::Deserialize;
     use std::sync::Arc;
     use tower::ServiceExt;
@@ -129,12 +128,11 @@ mod tests {
             .with_state(GithubToken(Arc::new(String::from("42"))))
     }
 
-    async fn body_string(body: BoxBody) -> String {
-        let bytes = hyper::body::to_bytes(body).await.unwrap();
-        String::from_utf8_lossy(&bytes).into()
+    async fn body_string(body: Body) -> String {
+        String::from_utf8_lossy(&body.collect().await.unwrap().to_bytes()).into()
     }
 
-    fn with_header(v: &'static str) -> Request<Body> {
+    fn with_header(v: &'static str) -> Request {
         Request::builder()
             .method("POST")
             .header("X-Hub-Signature-256", v)
@@ -179,7 +177,7 @@ mod tests {
 
     #[tokio::test]
     async fn signature_valid() {
-        let req = Request::builder()
+        let req: Request = Request::builder()
             .method("POST")
             .header(
                 "X-Hub-Signature-256",
