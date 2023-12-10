@@ -21,6 +21,6 @@ subtle = "2.5"
 
 [dev-dependencies]
 http-body-util = { version = "0.1.0" }
-hyper = { version = "0.14", default-features = false }
+hyper = { version = "1.0.1", default-features = false }
 tower = { version = "0.4", default-features = false }
-tokio = { version = "1.28", features = ["macros"] }
+tokio = { version = "1.35", features = ["macros"] }
