@@ -61,6 +61,7 @@ pub struct GithubToken(pub Arc<String>);
 pub struct GithubEvent<T>(pub T);
 
 fn err(m: impl Display) -> (StatusCode, String) {
+    tracing::error!("{m}");
     (StatusCode::BAD_REQUEST, m.to_string())
 }
 
@@ -82,9 +83,9 @@ where
                 .headers()
                 .get("X-Hub-Signature-256")
                 .and_then(|v| v.to_str().ok())
-                .ok_or(err("signature missing"))?
+                .ok_or_else(|| err("signature missing"))?
                 .strip_prefix("sha256=")
-                .ok_or(err("signature prefix missing"))?;
+                .ok_or_else(|| err("signature prefix missing"))?;
             let signature =
                 hex::decode(signature_sha256).map_err(|_| err("signature malformed"))?;
             let body = Bytes::from_request(req, state)
@@ -94,7 +95,6 @@ where
             if mac.ct_ne(&signature).into() {
                 return Err(err("signature mismatch"));
             }
-
             let deserializer = &mut serde_json::Deserializer::from_slice(&body);
             let value = serde_path_to_error::deserialize(deserializer).map_err(err)?;
             Ok(GithubEvent(value))
