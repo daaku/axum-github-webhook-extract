@@ -42,7 +42,6 @@
 //! [github-secret-token]: https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks#setting-your-secret-token
 //! [github-json]: https://docs.github.com/en/webhooks-and-events/webhooks/creating-webhooks#content-type
 
-use axum::async_trait;
 use axum::body::Bytes;
 use axum::extract::{FromRef, FromRequest, Request};
 use axum::http::StatusCode;
@@ -62,10 +61,10 @@ pub struct GithubToken(pub Arc<String>);
 pub struct GithubEvent<T>(pub T);
 
 fn err(m: impl Display) -> (StatusCode, String) {
+    tracing::error!("{m}");
     (StatusCode::BAD_REQUEST, m.to_string())
 }
 
-#[async_trait]
 impl<T, S> FromRequest<S> for GithubEvent<T>
 where
     GithubToken: FromRef<S>,
@@ -74,27 +73,32 @@ where
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let token = GithubToken::from_ref(state);
-        let signature_sha256 = req
-            .headers()
-            .get("X-Hub-Signature-256")
-            .and_then(|v| v.to_str().ok())
-            .ok_or(err("signature missing"))?
-            .strip_prefix("sha256=")
-            .ok_or(err("signature prefix missing"))?;
-        let signature = hex::decode(signature_sha256).map_err(|_| err("signature malformed"))?;
-        let body = Bytes::from_request(req, state)
-            .await
-            .map_err(|_| err("error reading body"))?;
-        let mac = HMAC::mac(&body, token.0.as_bytes());
-        if mac.ct_ne(&signature).into() {
-            return Err(err("signature mismatch"));
+    fn from_request(
+        req: Request,
+        state: &S,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+        async {
+            let token = GithubToken::from_ref(state);
+            let signature_sha256 = req
+                .headers()
+                .get("X-Hub-Signature-256")
+                .and_then(|v| v.to_str().ok())
+                .ok_or_else(|| err("signature missing"))?
+                .strip_prefix("sha256=")
+                .ok_or_else(|| err("signature prefix missing"))?;
+            let signature =
+                hex::decode(signature_sha256).map_err(|_| err("signature malformed"))?;
+            let body = Bytes::from_request(req, state)
+                .await
+                .map_err(|_| err("error reading body"))?;
+            let mac = HMAC::mac(&body, token.0.as_bytes());
+            if mac.ct_ne(&signature).into() {
+                return Err(err("signature mismatch"));
+            }
+            let deserializer = &mut serde_json::Deserializer::from_slice(&body);
+            let value = serde_path_to_error::deserialize(deserializer).map_err(err)?;
+            Ok(GithubEvent(value))
         }
-
-        let deserializer = &mut serde_json::Deserializer::from_slice(&body);
-        let value = serde_path_to_error::deserialize(deserializer).map_err(err)?;
-        Ok(GithubEvent(value))
     }
 }
 
